@@ -1,4 +1,11 @@
-import React, { Component, useState } from "react";
+import React, {
+  Component,
+  setRef,
+  useCallback,
+  useState,
+  useEffect,
+  useLayoutEffect,
+} from "react";
 import mojs from "mo-js";
 import styles from "./index.css";
 
@@ -9,107 +16,115 @@ const initialState = {
 };
 
 /***
- * HOC
+ * Custom hook for animation
  ***/
-const withClapAnimation = (WrappedComponent) => {
-  class WithClapAnimation extends Component {
-    animationTimeline = new mojs.Timeline();
-    state = {
-      animationTimeline: this.animationTimeline,
-    };
+const useClapAnimation = ({ clapEl, clapCountEl, clapTotalEl }) => {
+  const [animationTimeline, setAnimationTimeline] = useState(
+    () => new mojs.Timeline()
+  );
 
-    componentDidMount() {
-      const tlDuration = 300;
-      const scaleButton = new mojs.Html({
-        el: "#clap",
+  useLayoutEffect(() => {
+    if (!clapEl || !clapCountEl || !clapTotalEl) {
+      return;
+    }
+
+    const tlDuration = 300;
+    const scaleButton = new mojs.Html({
+      el: clapEl,
+      duration: tlDuration,
+      scale: { 1.3: 1 },
+      ease: mojs.easing.ease.out,
+    });
+
+    const triangleBurst = new mojs.Burst({
+      parent: clapEl,
+      radius: { 50: 95 },
+      count: 5,
+      angle: 30,
+      children: {
+        shape: "polygon",
+        radius: { 6: 0 },
+        stroke: "rgba(211, 54, 0, 0.5)",
+        strokeWidth: 5,
+        angle: 210,
+        delay: 30,
+        speed: 0.2,
+        easing: mojs.easing.bezier(0.1, 1, 0.3, 1),
         duration: tlDuration,
-        scale: { 1.3: 1 },
-        ease: mojs.easing.ease.out,
-      });
+      },
+    });
 
-      const triangleBurst = new mojs.Burst({
-        parent: "#clap",
-        radius: { 50: 95 },
-        count: 5,
-        angle: 30,
-        children: {
-          shape: "polygon",
-          radius: { 6: 0 },
-          stroke: "rgba(211, 54, 0, 0.5)",
-          strokeWidth: 5,
-          angle: 210,
-          delay: 30,
-          speed: 0.2,
-          easing: mojs.easing.bezier(0.1, 1, 0.3, 1),
-          duration: tlDuration,
-        },
-      });
+    const cirleBurst = new mojs.Burst({
+      parent: clapEl,
+      radius: { 50: 75 },
+      // count: 5,
+      angle: 25,
+      children: {
+        shape: "circle",
+        fill: "rgba(149,165,166,0.5)",
+        delay: 30,
+        speed: 0.2,
+        radius: { 3: 0 },
+        easing: mojs.easing.bezier(0.1, 1, 0.3, 1),
+      },
+    });
 
-      const cirleBurst = new mojs.Burst({
-        parent: "#clap",
-        radius: { 50: 75 },
-        // count: 5,
-        angle: 25,
-        children: {
-          shape: "circle",
-          fill: "rgba(149,165,166,0.5)",
-          delay: 30,
-          speed: 0.2,
-          radius: { 3: 0 },
-          easing: mojs.easing.bezier(0.1, 1, 0.3, 1),
-          duration: tlDuration,
-        },
-      });
+    const countAnimation = new mojs.Html({
+      el: clapCountEl,
+      opacity: { 0: 1 },
+      y: { 0: -30 },
+      duration: tlDuration,
+    }).then({
+      opacity: { 1: 0 },
+      y: -80,
+      delay: tlDuration / 2,
+    });
 
-      const countAnimation = new mojs.Html({
-        el: "#clapCount",
-        opacity: { 0: 1 },
-        y: { 0: -30 },
-        duration: tlDuration,
-      }).then({
-        opacity: { 1: 0 },
-        y: -80,
-        delay: tlDuration / 2,
-      });
+    const countTotalAnimation = new mojs.Html({
+      el: clapTotalEl,
+      opacity: { 0: 1 },
+      delay: (3 * tlDuration) / 2,
+      duration: tlDuration,
+      y: { 0: -3 },
+    });
 
-      const countTotalAnimation = new mojs.Html({
-        el: "#clapCountTotal",
-        opacity: { 0: 1 },
-        delay: (3 * tlDuration) / 2,
-        duration: tlDuration,
-        y: { 0: -3 },
-      });
-
+    if (typeof clapEl === "string") {
       const clap = document.getElementById("clap");
       clap.style.transform = "scale(1,1)";
+    } else {
+      clapEl.style.transform = "scale(1,1)";
+    }
 
-      const newAnimationTimeline = this.animationTimeline.add([
-        scaleButton,
-        countTotalAnimation,
-        countAnimation,
-        triangleBurst,
-        cirleBurst,
-      ]);
-      this.setState({
-        animationTimeline: newAnimationTimeline,
-      });
-    }
-    render() {
-      return (
-        <WrappedComponent
-          {...this.props}
-          animationTimeline={this.state.animationTimeline}
-        />
-      );
-    }
-  }
-  return WithClapAnimation;
+    const newAnimationTimeline = animationTimeline.add([
+      scaleButton,
+      countTotalAnimation,
+      countAnimation,
+      triangleBurst,
+      cirleBurst,
+    ]);
+    setAnimationTimeline(newAnimationTimeline);
+  }, [clapEl, clapCountEl, clapTotalEl]);
+
+  return animationTimeline;
 };
 
-const MediumClap = ({ animationTimeline }) => {
+const MediumClap = () => {
   const MAXIMUM_USER_CLAP = 12;
   const [clapState, setClapState] = useState(initialState);
   const { count, countTotal, isClicked } = clapState;
+
+  const [{ clapRef, clapCountRef, clapTotalRef }, setRefState] = useState({});
+  const setRef = useCallback((node) => {
+    setRefState((prevRefState) => ({
+      ...prevRefState,
+      [node.dataset.refkey]: node,
+    }));
+  }, []);
+  const animationTimeline = useClapAnimation({
+    clapEl: clapRef,
+    clapCountEl: clapCountRef,
+    clapTotalEl: clapTotalRef,
+  });
 
   const handleClapClick = () => {
     animationTimeline.replay();
@@ -123,10 +138,15 @@ const MediumClap = ({ animationTimeline }) => {
     }));
   };
   return (
-    <button id="clap" className={styles.clap} onClick={handleClapClick}>
+    <button
+      ref={setRef}
+      data-refkey="clapRef"
+      className={styles.clap}
+      onClick={handleClapClick}
+    >
       <ClapIcon isClicked="idClicked" />
-      <ClapCount count={count} />
-      <ClapTotal countTotal={countTotal} />
+      <ClapCount count={count} setRef={setRef} />
+      <ClapTotal countTotal={countTotal} setRef={setRef} />
     </button>
   );
 };
@@ -193,17 +213,17 @@ const ClapIcon = ({ isClicked }) => {
   );
 };
 
-const ClapCount = ({ count }) => {
+const ClapCount = ({ count, setRef }) => {
   return (
-    <span id="clapCount" className={styles.count}>
+    <span ref={setRef} data-refkey="clapCountRef" className={styles.count}>
       + {count}
     </span>
   );
 };
 
-const ClapTotal = ({ countTotal }) => {
+const ClapTotal = ({ countTotal, setRef }) => {
   return (
-    <span id="clapCountTotal" className={styles.total}>
+    <span ref={setRef} data-refkey="clapTotalRef" className={styles.total}>
       {countTotal}
     </span>
   );
@@ -213,8 +233,7 @@ const ClapTotal = ({ countTotal }) => {
  * Usage
  */
 const Usage = () => {
-  const AnimatedMediumClap = withClapAnimation(MediumClap);
-  return <AnimatedMediumClap />;
+  return <MediumClap />;
 };
 
 export default Usage;
