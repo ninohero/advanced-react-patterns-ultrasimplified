@@ -164,12 +164,13 @@ const MediumClap = ({
         }));
   };
 
-  const getState = () =>
+  const getState = () => {
     useCallback(() => (isControlled ? values : clapState), [
       isControlled,
       values,
       clapState,
     ]);
+  };
 
   const memoizedValue = useMemo(
     () => ({
@@ -200,9 +201,11 @@ const MediumClap = ({
 
 const ClapIcon = ({ style: userStyles = {}, className }) => {
   const { isClicked } = useContext(MediumClapContext);
+
   const classNames = [styles.icon, isClicked ? styles.checked : "", className]
     .join(" ")
     .trim();
+
   return (
     <span>
       <svg
@@ -281,6 +284,7 @@ const ClapCount = ({ style: userStyles = {}, className }) => {
 const ClapTotal = ({ styles: userStyles = {}, className }) => {
   const { countTotal, setRef } = useContext(MediumClapContext);
   const classNames = [styles.total, className].join(" ").trim();
+
   return (
     <span
       ref={setRef}
