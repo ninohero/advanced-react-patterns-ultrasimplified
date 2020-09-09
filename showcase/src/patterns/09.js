@@ -162,7 +162,6 @@ const useClapState = (initialState = INITIAL_STATE) => {
   const resetRef = useRef(0);
   const prevCount = usePrevious(count);
   const reset = useCallback(() => {
-    const prevCount = usePrevious(count);
     if (prevCount !== count) {
       console.log({ prevCount, count });
       setClapState(userInitialState.current);
@@ -325,6 +324,7 @@ const Usage = () => {
         />
       </ClapContainer>
       <section>
+        {/* to prevent uncanny bugs, disable the button while uploading by adding a "disabled" attribute as seen below 👇 */}
         <button
           onClick={reset}
           className={userStyles.resetBtn}
